@@ -3,13 +3,10 @@ from flask import Flask, redirect, render_template_string, request, url_for
 
 app = Flask(__name__)
 
-# Dados em memória
 operadores = []
-# Lista de registros: {'id', 'secador', 'operador', 'inicio_str', 'fim_str', 'horas', 'duracao_str', 'alerta', 'data_fim'}
 historico = []
 proximo_id = 1
 
-# Secadores do 2 ao 12
 secadores = {
     i: {
         'operador': '-',
@@ -51,16 +48,14 @@ def calcular_medias(secador_num=None):
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-  global proximo_id
+  global proximo_id, historico
 
   if request.method == 'POST':
-    # Cadastro de operador
     if 'cadastrar_operador' in request.form:
       nome = request.form.get('nome_operador', '').strip()
       if nome and nome not in operadores:
         operadores.append(nome)
 
-    # Registro de Secagem
     elif 'registrar_secagem' in request.form:
       num_secador = int(request.form.get('secador'))
       operador = request.form.get('operador')
@@ -101,13 +96,10 @@ def home():
               'alerta': alerta,
           }
 
-    # Apagar um registro do histórico
     elif 'apagar_registro' in request.form:
       reg_id = int(request.form.get('registro_id'))
-      global historico
       historico = [r for r in historico if r['id'] != reg_id]
 
-    # Limpar / Resetar secador
     elif 'limpar_secador' in request.form:
       num_secador = int(request.form.get('secador_id'))
       secadores[num_secador] = {
@@ -123,7 +115,6 @@ def home():
         url_for('home', filtro_secador=request.args.get('filtro_secador', ''))
     )
 
-  # Filtro do histórico
   filtro_secador = request.args.get('filtro_secador', '')
   if filtro_secador.isdigit():
     secador_filtro_num = int(filtro_secador)
@@ -136,7 +127,7 @@ def home():
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
 
-  html_template = '''
+  html_template = """
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
@@ -182,7 +173,6 @@ def home():
         <div class="container">
             <h1>🌾 Painel de Controle de Secadores de Arroz</h1>
 
-            <!-- Média Geral em Tempo Real -->
             <div class="card">
                 <h3>⚡ Média Geral em Tempo Real (Todos os Secadores)</h3>
                 <div class="stats-grid">
@@ -202,7 +192,6 @@ def home():
             </div>
 
             <div class="forms-grid">
-                <!-- Cadastro de Operador -->
                 <div class="card">
                     <h3>👤 Cadastrar Operador</h3>
                     <form method="POST">
@@ -216,7 +205,6 @@ def home():
                     </p>
                 </div>
 
-                <!-- Lançamento do Processo de Secagem -->
                 <div class="card">
                     <h3>⏱️ Registrar Secagem</h3>
                     <form method="POST">
@@ -250,7 +238,6 @@ def home():
                 </div>
             </div>
 
-            <!-- Monitoramento dos Secadores (Secador 2 ao 12) -->
             <div class="card">
                 <h3>🏭 Status e Médias Individuais (Secadores 2 a 12)</h3>
                 <div class="secadores-grid">
@@ -289,7 +276,6 @@ def home():
                 </div>
             </div>
 
-            <!-- Tabela de Histórico e Filtro por Secador -->
             <div class="card">
                 <h3>📜 Histórico de Secagens</h3>
                 
@@ -351,7 +337,7 @@ def home():
         </div>
     </body>
     </html>
-    '''
+    """
   return render_template_string(
       html_template,
       operadores=operadores,
