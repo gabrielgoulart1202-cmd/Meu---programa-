@@ -438,4 +438,48 @@ def home():
                                 <tr>
                                     <td><strong>Secador {{ reg.secador }}</strong></td>
                                     <td>{{ reg.operador }}</td>
-                                    <td>{{ reg.inicio_str }}
+                                    <td>{{ reg.inicio_str }}</td>
+                                    <td>{{ reg.fim_str }}</td>
+                                    <td>{{ reg.duracao_str }}</td>
+                                    <td>
+                                        {% if reg.alerta %}
+                                            <span class="badge badge-alerta">⚠️ Alerta (> 3h)</span>
+                                        {% else %}
+                                            <span class="badge badge-eficiente">Eficiente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja apagar este lançamento?');">
+                                            <input type="hidden" name="apagar_registro" value="1">
+                                            <input type="hidden" name="registro_id" value="{{ reg.id }}">
+                                            <button type="submit" class="btn-danger">🗑️ Apagar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p style="text-align: center; color: #7f8c8d; margin-top:20px;">Nenhum registro encontrado para este filtro.</p>
+                {% endif %}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+  return render_template_string(
+      html_template,
+      operadores=operadores,
+      secadores=secadores,
+      historico=historico,
+      historico_exibicao=historico_exibicao,
+      filtro_secador=filtro_secador,
+      data_hoje_inicio=data_hoje_inicio,
+      data_hoje_fim=data_hoje_fim,
+      medias_gerais=medias_gerais,
+      medias_por_secador=medias_por_secador,
+  )
+
+
+if __name__ == '__main__':
+  app.run()
