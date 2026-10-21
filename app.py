@@ -44,11 +44,12 @@ def recalcular_status_secador(num_secador):
 
 
 def calcular_medias(secador_num=None):
-  # Comparamos apenas a data (Ano, Mês, Dia) para garantir que entra sempre no dia correto
-  hoje_str = datetime.now().strftime('%Y-%m-%d')
-  semana_atual = datetime.now().isocalendar()[1]
-  mes_atual = datetime.now().month
-  ano_atual = datetime.now().year
+  # Ajusta para o horário do Brasil (UTC-3) para sincronizar com o Vercel
+  agora_brasil = datetime.utcnow() - timedelta(hours=3)
+  hoje_str = agora_brasil.strftime('%Y-%m-%d')
+  semana_atual = agora_brasil.isocalendar()[1]
+  mes_atual = agora_brasil.month
+  ano_atual = agora_brasil.year
 
   registros = historico
   if secador_num:
@@ -61,20 +62,15 @@ def calcular_medias(secador_num=None):
     avg = total / len(filtrados)
     return f'{int(avg)}h {int((avg*60)%60)}m'
 
-  # Filtro do dia (compara a string YYYY-MM-DD da data fim)
   m_dia = media_horas(
-      [r for r in registros if r['data_fim'].strftime('%Y-%m-%d') == hoje_str]
+      [r for r in registros if r['data_fim'].strftime('%Y-%m-%d'] == hoje_str]
   )
-
-  # Filtro da semana
   m_semana = media_horas([
       r
       for r in registros
       if r['data_fim'].isocalendar()[1] == semana_atual
       and r['data_fim'].year == ano_atual
   ])
-
-  # Filtro do mês
   m_mes = media_horas([
       r
       for r in registros
@@ -161,9 +157,9 @@ def home():
   else:
     historico_exibicao = historico
 
-  agora_now = datetime.now()
-  data_hoje_inicio = agora_now.strftime('%Y-%m-%dT%H:%M')
-  data_hoje_fim = (agora_now + timedelta(hours=3)).strftime('%Y-%m-%dT%H:%M')
+  agora_brasil = datetime.utcnow() - timedelta(hours=3)
+  data_hoje_inicio = agora_brasil.strftime('%Y-%m-%dT%H:%M')
+  data_hoje_fim = (agora_brasil + timedelta(hours=3)).strftime('%Y-%m-%dT%H:%M')
 
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
