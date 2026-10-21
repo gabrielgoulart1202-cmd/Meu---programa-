@@ -1,11 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, redirect, render_template_string, request, url_for
 
 app = Flask(__name__)
 
-# Dados mantidos em memória durante a execução
+# Memória dos dados
 operadores = []
-# 12 secadores: Secador 1 até Secador 12
+historico = []  # Lista de registros: {'secador', 'operador', 'inicio', 'fim', 'horas', 'duracao_str', 'alerta', 'data_fim'}
+
+# Secadores do 2 ao 12
 secadores = {
     i: {
         'operador': '-',
@@ -15,8 +17,34 @@ secadores = {
         'status': 'Livre',
         'alerta': False,
     }
-    for i in range(1, 13)
+    for i in range(2, 13)
 }
+
+
+def calcular_medias(secador_num=None):
+  agora = datetime.now()
+  hoje_inicio = agora.replace(hour=0, minute=0, second=0, microsecond=0)
+  semana_inicio = hoje_inicio - timedelta(days=agora.weekday())
+  mes_inicio = hoje_inicio.replace(day=1)
+
+  registros = historico
+  if secador_num:
+    registros = [r for r in historico if r['secador'] == secador_num]
+
+  def media_horas(filtrados):
+    if not filtrados:
+      return '-'
+    total = sum(r['horas'] for r in filtrados)
+    avg = total / len(filtrados)
+    return f'{int(avg)}h {int((avg*60)%60)}m'
+
+  m_dia = media_horas([r for r in registros if r['data_fim'] >= hoje_inicio])
+  m_semana = media_horas(
+      [r for r in registros if r['data_fim'] >= semana_inicio]
+  )
+  m_mes = media_horas([r for r in registros if r['data_fim'] >= mes_inicio])
+
+  return {'dia': m_dia, 'semana': m_semana, 'mes': m_mes}
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -44,7 +72,19 @@ def home():
 
         if horas >= 0:
           duracao_formatada = f'{int(horas)}h {int((horas*60)%60)}m'
-          alerta = horas > 3.0  # Alerta se passar de 3 horas de secagem
+          alerta = horas > 3.0  # Alerta se passar de 3h
+
+          registro = {
+              'secador': num_secador,
+              'operador': operador,
+              'inicio_str': dt_inicio.strftime('%d/%m/%Y %H:%M'),
+              'fim_str': dt_fim.strftime('%d/%m/%Y %H:%M'),
+              'horas': horas,
+              'duracao_str': duracao_formatada,
+              'alerta': alerta,
+              'data_fim': dt_fim,
+          }
+          historico.insert(0, registro)  # Adiciona no topo do histórico
 
           secadores[num_secador] = {
               'operador': operador,
@@ -69,6 +109,12 @@ def home():
 
     return redirect(url_for('home'))
 
+  medias_gerais = calcular_medias()
+
+  medias_por_secador = {}
+  for i in range(2, 13):
+    medias_por_secador[i] = calcular_medias(i)
+
   html_template = '''
     <!DOCTYPE html>
     <html lang="pt-br">
@@ -88,7 +134,7 @@ def home():
             button:hover { background-color: #219150; }
             .btn-clear { background-color: #7f8c8d; margin-top: 5px; font-size: 12px; padding: 5px; }
             .btn-clear:hover { background-color: #636e72; }
-            .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 10px; }
+            .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; margin-top: 10px; }
             .secador-card { border: 2px solid #bdc3c7; border-radius: 8px; padding: 15px; background: #fff; position: relative; }
             .secador-card.eficiente { border-color: #2ecc71; background-color: #e8f8f5; }
             .secador-card.alerta { border-color: #e74c3c; background-color: #fadbd8; animation: pulse 2s infinite; }
@@ -96,12 +142,39 @@ def home():
             .badge-livre { background-color: #95a5a6; }
             .badge-eficiente { background-color: #2ecc71; }
             .badge-alerta { background-color: #e74c3c; }
+            .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center; }
+            .stat-box { background: #ebf5fb; padding: 15px; border-radius: 8px; border-left: 5px solid #3498db; }
+            .stat-box h4 { margin: 0; color: #2980b9; font-size: 14px; }
+            .stat-box p { margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #2c3e50; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+            th { background-color: #34495e; color: white; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
             @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>🌾 Painel de Controle de Secadores de Arroz</h1>
+
+            <!-- Média Geral de Secagem -->
+            <div class="card">
+                <h3>📊 Média Geral do Processo (Todos os Secadores)</h3>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <h4>Média do Dia</h4>
+                        <p>{{ medias_gerais.dia }}</p>
+                    </div>
+                    <div class="stat-box">
+                        <h4>Média da Semana</h4>
+                        <p>{{ medias_gerais.semana }}</p>
+                    </div>
+                    <div class="stat-box">
+                        <h4>Média do Mês</h4>
+                        <p>{{ medias_gerais.mes }}</p>
+                    </div>
+                </div>
+            </div>
 
             <div class="forms-grid">
                 <!-- Cadastro de Operador -->
@@ -124,9 +197,9 @@ def home():
                     <form method="POST">
                         <input type="hidden" name="registrar_secagem" value="1">
                         
-                        <label>Secador:</label>
+                        <label>Secador (2 ao 12):</label>
                         <select name="secador" required>
-                            {% for i in range(1, 13) %}
+                            {% for i in range(2, 13) %}
                                 <option value="{{ i }}">Secador {{ i }}</option>
                             {% endfor %}
                         </select>
@@ -152,9 +225,9 @@ def home():
                 </div>
             </div>
 
-            <!-- Monitoramento dos 12 Secadores -->
+            <!-- Monitoramento dos Secadores (Secador 2 ao 12) -->
             <div class="card">
-                <h3>🏭 Status dos Secadores (1 a 12)</h3>
+                <h3>🏭 Status e Médias Individuais (Secadores 2 a 12)</h3>
                 <div class="secadores-grid">
                     {% for num, dados in secadores.items() %}
                         <div class="secador-card {% if dados.alerta %}alerta{% elif dados.status == 'Eficiente' %}eficiente{% endif %}">
@@ -171,8 +244,14 @@ def home():
                             <p><strong>Operador:</strong> {{ dados.operador }}</p>
                             <p><strong>Início:</strong> {{ dados.inicio or '-' }}</p>
                             <p><strong>Fim:</strong> {{ dados.fim or '-' }}</p>
-                            <p><strong>Duração:</strong> {{ dados.duracao }}</p>
+                            <p><strong>Duração Última:</strong> {{ dados.duracao }}</p>
                             
+                            <hr style="border: 0; border-top: 1px solid #ddd; margin: 10px 0;">
+                            <p style="font-size: 12px; margin: 2px 0;"><strong>Médias:</strong></p>
+                            <p style="font-size: 11px; margin: 2px 0;">• Dia: {{ medias_por_secador[num].dia }}</p>
+                            <p style="font-size: 11px; margin: 2px 0;">• Semana: {{ medias_por_secador[num].semana }}</p>
+                            <p style="font-size: 11px; margin: 2px 0;">• Mês: {{ medias_por_secador[num].mes }}</p>
+
                             {% if dados.status != 'Livre' %}
                                 <form method="POST">
                                     <input type="hidden" name="limpar_secador" value="1">
@@ -184,12 +263,56 @@ def home():
                     {% endfor %}
                 </div>
             </div>
+
+            <!-- Tabela de Histórico de Secagens -->
+            <div class="card">
+                <h3>📜 Histórico de Secagens</h3>
+                {% if historico %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Secador</th>
+                                <th>Operador</th>
+                                <th>Início</th>
+                                <th>Fim</th>
+                                <th>Duração</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reg in historico %}
+                                <tr>
+                                    <td><strong>Secador {{ reg.secador }}</strong></td>
+                                    <td>{{ reg.operador }}</td>
+                                    <td>{{ reg.inicio_str }}</td>
+                                    <td>{{ reg.fim_str }}</td>
+                                    <td>{{ reg.duracao_str }}</td>
+                                    <td>
+                                        {% if reg.alerta %}
+                                            <span class="badge badge-alerta">⚠️ Alerta (> 3h)</span>
+                                        {% else %}
+                                            <span class="badge badge-eficiente">Eficiente</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p style="text-align: center; color: #7f8c8d;">Nenhum registro de secagem efetuado ainda.</p>
+                {% endif %}
+            </div>
         </div>
     </body>
     </html>
     '''
   return render_template_string(
-      html_template, operadores=operadores, secadores=secadores
+      html_template,
+      operadores=operadores,
+      secadores=secadores,
+      historico=historico,
+      medias_gerais=medias_gerais,
+      medias_por_secador=medias_por_secador,
   )
 
 
