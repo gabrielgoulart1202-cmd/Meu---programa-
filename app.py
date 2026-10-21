@@ -20,6 +20,30 @@ secadores = {
 }
 
 
+def recalcular_status_secador(num_secador):
+  """Recalcula o status do card do secador com base no registro mais recente do histórico."""
+  registros = [r for r in historico if r['secador'] == num_secador]
+  if registros:
+    ultimo = registros[0]  # O histórico é ordenado do mais recente para o mais antigo
+    secadores[num_secador] = {
+        'operador': ultimo['operador'],
+        'inicio': ultimo['inicio_fmt_card'],
+        'fim': ultimo['fim_fmt_card'],
+        'duracao': ultimo['duracao_str'],
+        'status': 'Alerta (> 3h)' if ultimo['alerta'] else 'Eficiente',
+        'alerta': ultimo['alerta'],
+    }
+  else:
+    secadores[num_secador] = {
+        'operador': '-',
+        'inicio': '',
+        'fim': '',
+        'duracao': '-',
+        'status': 'Livre',
+        'alerta': False,
+    }
+
+
 def calcular_medias(secador_num=None):
   agora = datetime.now()
   hoje_inicio = agora.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -79,6 +103,8 @@ def home():
               'operador': operador,
               'inicio_str': dt_inicio.strftime('%d/%m/%Y %H:%M'),
               'fim_str': dt_fim.strftime('%d/%m/%Y %H:%M'),
+              'inicio_fmt_card': dt_inicio.strftime('%d/%m %H:%M'),
+              'fim_fmt_card': dt_fim.strftime('%d/%m %H:%M'),
               'horas': horas,
               'duracao_str': duracao_formatada,
               'alerta': alerta,
@@ -86,19 +112,17 @@ def home():
           }
           proximo_id += 1
           historico.insert(0, registro)
-
-          secadores[num_secador] = {
-              'operador': operador,
-              'inicio': dt_inicio.strftime('%d/%m %H:%M'),
-              'fim': dt_fim.strftime('%d/%m %H:%M'),
-              'duracao': duracao_formatada,
-              'status': 'Alerta (> 3h)' if alerta else 'Eficiente',
-              'alerta': alerta,
-          }
+          recalcular_status_secador(num_secador)
 
     elif 'apagar_registro' in request.form:
       reg_id = int(request.form.get('registro_id'))
+      # Encontra qual secador pertencia o registro antes de apagar
+      secador_afetado = next(
+          (r['secador'] for r in historico if r['id'] == reg_id), None
+      )
       historico = [r for r in historico if r['id'] != reg_id]
+      if secador_afetado:
+        recalcular_status_secador(secador_afetado)
 
     elif 'limpar_secador' in request.form:
       num_secador = int(request.form.get('secador_id'))
@@ -123,6 +147,11 @@ def home():
     ]
   else:
     historico_exibicao = historico
+
+  # Data/Hora padrão com a data e horário de hoje (editável)
+  agora_now = datetime.now()
+  data_hoje_inicio = agora_now.strftime('%Y-%m-%dT%H:%M')
+  data_hoje_fim = (agora_now + timedelta(hours=3)).strftime('%Y-%m-%dT%H:%M')
 
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
@@ -227,11 +256,11 @@ def home():
                             {% endfor %}
                         </select>
 
-                        <label>Data/Hora Início:</label>
-                        <input type="datetime-local" name="inicio" required>
+                        <label>Data/Hora Início (Hoje - editável):</label>
+                        <input type="datetime-local" name="inicio" value="{{ data_hoje_inicio }}" required>
 
-                        <label>Data/Hora Término:</label>
-                        <input type="datetime-local" name="fim" required>
+                        <label>Data/Hora Término (Hoje - editável):</label>
+                        <input type="datetime-local" name="fim" value="{{ data_hoje_fim }}" required>
 
                         <button type="submit" {% if not operadores %}disabled style="background:#ccc"{% endif %}>Lançar Registros</button>
                     </form>
@@ -345,6 +374,8 @@ def home():
       historico=historico,
       historico_exibicao=historico_exibicao,
       filtro_secador=filtro_secador,
+      data_hoje_inicio=data_hoje_inicio,
+      data_hoje_fim=data_hoje_fim,
       medias_gerais=medias_gerais,
       medias_por_secador=medias_por_secador,
   )
