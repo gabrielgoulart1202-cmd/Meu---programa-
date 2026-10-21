@@ -163,9 +163,6 @@ def home():
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
 
-  # String Base64 real da logo vermelha da Rampinelli Alimentos
-  logo_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSU24kJgg=="
-
   html_template = """
     <!DOCTYPE html>
     <html lang="pt-br">
@@ -177,8 +174,8 @@ def home():
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
             .header-container { text-align: center; margin-bottom: 25px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
             .header-title-box { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; }
-            .logo-svg { height: 50px; width: auto; max-width: 200px; display: inline-block; vertical-align: middle; }
-            h1 { color: #2c3e50; margin: 0; font-size: 26px; display: inline-block; vertical-align: middle; }
+            .logo-img { height: 55px; width: auto; object-fit: contain; vertical-align: middle; }
+            h1 { color: #2c3e50; margin: 0; font-size: 26px; vertical-align: middle; }
             .subtitle { color: #b03a2e; font-size: 18px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; }
             .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
             .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -223,12 +220,7 @@ def home():
         <div class="container">
             <div class="header-container">
                 <div class="header-title-box">
-                    <!-- Logo Rampinelli em formato SVG Vetorial Nativo puro (Sem falhas de carregamento) -->
-                    <svg class="logo-svg" viewBox="0 0 300 80" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M 10 20 Q 150 5 290 20 L 290 60 Q 150 75 10 60 Z" fill="#b01b21" />
-                        <path d="M 25 58 Q 150 72 275 58" stroke="#f1c40f" stroke-width="3" fill="none" />
-                        <text x="150" y="47" font-family="'Arial Black', 'Impact', sans-serif" font-size="30" font-weight="900" fill="#ffffff" text-anchor="middle">RAMPINELLI</text>
-                    </svg>
+                    <img src="https://www.rampinelli.com.br/img/logo-rampinelli.png" alt="Rampinelli Alimentos" class="logo-img">
                     <h1>Painel de Controle de Secadores de Arroz</h1>
                 </div>
                 <div class="subtitle">PPCP Rampinelli Alimentos</div>
