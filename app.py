@@ -1,5 +1,13 @@
 from datetime import datetime, timedelta
-from flask import Flask, redirect, render_template_string, request, url_for
+import json
+from flask import (
+    Flask,
+    Response,
+    redirect,
+    render_template_string,
+    request,
+    url_for,
+)
 
 app = Flask(__name__)
 
@@ -44,7 +52,6 @@ def recalcular_status_secador(num_secador):
 
 
 def calcular_medias(secador_num=None):
-  # Considera o fuso horário de Brasília (UTC-3)
   agora_brasil = datetime.utcnow() - timedelta(hours=3)
   hoje_str = agora_brasil.strftime('%Y-%m-%d')
   semana_atual = agora_brasil.isocalendar()[1]
@@ -62,12 +69,9 @@ def calcular_medias(secador_num=None):
     avg = total / len(filtrados)
     return f'{int(avg)}h {int((avg*60)%60)}m'
 
-  # Filtra comparando a data formatada do término com o dia de hoje no Brasil
   m_dia = media_horas(
       [r for r in registros if r['data_fim'].strftime('%Y-%m-%d') == hoje_str]
   )
-
-  # Filtra pela semana atual e mês atual
   m_semana = media_horas([
       r
       for r in registros
@@ -85,7 +89,7 @@ def calcular_medias(secador_num=None):
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-  global proximo_id, historico
+  global proximo_id, historico, operadores, secadores
 
   if request.method == 'POST':
     if 'cadastrar_operador' in request.form:
@@ -147,8 +151,59 @@ def home():
           'alerta': False,
       }
 
+    elif 'importar_json' in request.form:
+      arquivo = request.files.get('arquivo_json')
+      if arquivo:
+        try:
+          conteudo = arquivo.read().decode('utf-8')
+          dados = json.loads(conteudo)
+          operadores = dados.get('operadores', [])
+          proximo_id = dados.get('proximo_id', 1)
+
+          # Reconstrói o histórico convertendo as datas de volta para datetime
+          novo_historico = []
+          for r in dados.get('historico', []):
+            r['data_fim'] = datetime.fromisoformat(r['data_fim_iso'])
+            novo_historico.append(r)
+          historico = novo_historico
+
+          # Reseta e recalcula os secadores com base no histórico importado
+          for i in range(2, 13):
+            recalcular_status_secador(i)
+        except Exception as e:
+          print(f'Erro ao importar JSON: {e}')
+
     return redirect(
         url_for('home', filtro_secador=request.args.get('filtro_secador', ''))
+    )
+
+  # Rota para Exportar JSON
+  if request.args.get('exportar') == '1':
+    dados_exportar = {
+        'operadores': operadores,
+        'proximo_id': proximo_id,
+        'historico': [
+            {
+                **r,
+                'data_fim_iso': r['data_fim'].isoformat(),
+                'data_fim': None,  # Remove objeto datetime não serializável
+            }
+            for r in historico
+        ],
+    }
+    # Limpa o campo datetime temporário do histórico na memória
+    for r in historico:
+      pass
+
+    resposta_json = json.dumps(dados_exportar, ensure_ascii=False, indent=4)
+    return Response(
+        resposta_json,
+        mimetype='application/json',
+        headers={
+            'Content-Disposition': (
+                'attachment;filename=controle_secadores_backup.json'
+            )
+        },
     )
 
   filtro_secador = request.args.get('filtro_secador', '')
@@ -192,6 +247,10 @@ def home():
             .btn-danger:hover { background-color: #c0392b; }
             .btn-clear { background-color: #7f8c8d; margin-top: 5px; font-size: 12px; padding: 5px; }
             .btn-clear:hover { background-color: #636e72; }
+            .btn-export { background-color: #2980b9; }
+            .btn-export:hover { background-color: #2471a3; }
+            .btn-import { background-color: #8e44ad; }
+            .btn-import:hover { background-color: #7d3c98; }
             .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; margin-top: 10px; }
             .secador-card { 
                 border: 2px solid #bdc3c7; 
@@ -292,6 +351,22 @@ def home():
 
                         <button type="submit" {% if not operadores %}disabled style="background:#ccc"{% endif %}>Lançar Registros</button>
                     </form>
+                </div>
+            </div>
+
+            <div class="card" style="background: #eef2f3;">
+                <h3>💾 Gerenciamento de Dados (Backup JSON)</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
+                    <div>
+                        <a href="/?exportar=1" class="btn-export" style="display: inline-block; padding: 10px 15px; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; text-align: center;">📥 Exportar Dados (JSON)</a>
+                    </div>
+                    <div style="flex-grow: 1; min-width: 280px;">
+                        <form method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; margin: 0;">
+                            <input type="hidden" name="importar_json" value="1">
+                            <input type="file" name="arquivo_json" accept=".json" required style="margin: 0; background: white; padding: 6px;">
+                            <button type="submit" class="btn-import" style="margin: 0; padding: 10px 15px; width: auto;">📤 Importar</button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
