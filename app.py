@@ -44,7 +44,6 @@ def recalcular_status_secador(num_secador):
 
 
 def calcular_medias(secador_num=None):
-  # Ajusta para o horário do Brasil (UTC-3) para sincronizar com o Vercel
   agora_brasil = datetime.utcnow() - timedelta(hours=3)
   hoje_str = agora_brasil.strftime('%Y-%m-%d')
   semana_atual = agora_brasil.isocalendar()[1]
@@ -186,7 +185,36 @@ def home():
             .btn-clear { background-color: #7f8c8d; margin-top: 5px; font-size: 12px; padding: 5px; }
             .btn-clear:hover { background-color: #636e72; }
             .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; margin-top: 10px; }
-            .secador-card { border: 2px solid #bdc3c7; border-radius: 8px; padding: 15px; background: #fff; position: relative; }
+            
+            /* Card do Secador com fundo de imagem transparente */
+            .secador-card { 
+                border: 2px solid #bdc3c7; 
+                border-radius: 8px; 
+                padding: 15px; 
+                background-color: #fff; 
+                position: relative; 
+                overflow: hidden;
+            }
+            /* Camada da imagem de fundo transparente */
+            .secador-card::before {
+                content: "";
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                /* COLOQUE O LINK DA SUA IMAGEM NO LUGAR DE 'URL_DA_SUA_IMAGEM_AQUI' */
+                background-image: url('URL_DA_SUA_IMAGEM_AQUI');
+                background-repeat: no-repeat;
+                background-position: center;
+                background-size: contain;
+                opacity: 0.12; /* Transparência da marca d'água */
+                pointer-events: none;
+                z-index: 1;
+            }
+            /* Garante que o texto fique acima da imagem de fundo */
+            .secador-card > * {
+                position: relative;
+                z-index: 2;
+            }
+
             .secador-card.eficiente { border-color: #2ecc71; background-color: #e8f8f5; }
             .secador-card.alerta { border-color: #e74c3c; background-color: #fadbd8; animation: pulse 2s infinite; }
             .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; }
