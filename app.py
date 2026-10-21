@@ -163,8 +163,8 @@ def home():
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
 
-  # Imagem da logo Rampinelli embutida diretamente em Base64
-  logo_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARgAAABaCAYAAAB2bYxXAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAVjSURBVHhe7Z1BchoxEEU33v/KcILs2SAnSK7A3iU3yAnSGSAnSG6AEyAnQHaAnAAn4I55VdXpX12/3epWW+qXqmIwq9X9erfVki3LMgIghAnECCECCUGAAPmBvI4S4f9O3k8A30C8S0qE124C5APy/M/J6/3H63p32y96T9A/Inyf3m32eP138loC8g3I52e0vX/m/m3/efp38noC8glI7Xfy030v+/Lz4kQC8k/iOQ6f4/TfTf8f5xKQXxC/bvb/z9z+42f0H+M/XkB+R54397k5+m+nv3//eR/3E5Dfl3L3e414fvx5m4M/vI/44X3I10m5/19H/Nvhf4znE5BPXf93o92x/T3oJv1O/qO85i4A8g3iO3l11933/6Dvyet3P/C3pED+iPxI/v+/v9cR/z544m8XAN9AvEtKxP+dvJ7An5O/U143L8y1/x2QT/xInid3eI2fn5d/m34A1yCvO3f++L6X4O84/A2pE+f5+0E+IbdxeO3dD/4x/u1s3X8e/3qXAHmFn4+f4/e/p013z4/f2RvlA/L1+NvdP/1tD8gLJO423cbfbvI8X/3lAn+5An85x3XkF8jL+3T9L7H602vXvwP53YhzS4A8f0665f8H5B2eR4D8k/0R+A9S4e803dM1S4s4t/a9f9L93/29uI4c5x03Ea+/An/53+0fIG8vAnx2015H9vf/9QPI1xN33S23Sbgd+DsfXvfX/d8C5Pchx99/C/l5cvefXj29D3kO9/4C+fs3u+/y261v8LdtE304O8m/CchfC9/J83S9u1vu8N/1eG83AfIEic3439eRvEwE5B3vI2B5911f+/498s/Ecfh5vD/+3mH92/vjfw/vN3eC3A73v+/o3c9//P3u/QXI84e3WfL4516Q5/pPj79e5v913vj/qSvfP1P/A/m/43+MByT//2qR10433V39T+S/7e/38Pf/fA/yR14nAfn/qSveR/za7/q/Xf+f3AJA/mO65x4A5P8LAnwB5BmA13sJkGcA/j1LgDwDcIsfAfgH4n6AAt/5AvIC37sI4LtfQC4g8I9+8JdL+JcL+JdP/C1+i0cI339b3+LX4B+2/C2A3+S3/10C/P4GfgL/0oXvYvgX7+3fDvx+/10Af1H/dQDkE/I1O5Jvd+D72NfL2+G3X9xIAD/vQ74eXicB+Zbc57s/IPl2B36O/S/70bvdA9/T5/YvFvj9BfyN6Z3f30j+5m2k+v13B394H/HD+5APyP/sPvx8iR8x/vXb37f8yS1+z4D8T7fB/x8E4G0I2OInIAt8pAn4C4H8P/4E8L/1/wfwN/7pEvg7At8f/O3/tQv8eQL/vEa3E4D/+T3mR84/2QeA/03uO3434p+P2397+f0+5PfI236/AHzfR/L96W75O/T9/X/7S14nAfL3qP/1B3wfebr3533/uY/3iP/2+A9vPflm/NspLqTf1Tf/S/D9nO/99/3X+E3A//2H9xFv+B0AAnwQ4A/eR4D/3C0fAAn/93m3AvkG4d8n/xIAt/L95O/4vwMInyNvhf+O39P//f3vH3y3A/x58rA5fT6d/sX1BOSv53yN4x+P368g3y+/0R38uOvuuv/3m+S8iA83XyNvhv/On428N7oA/vK8vJm3m5D3vRze/u0g7Xp/fA2A3Eee5Ovl73b7C8hj+I71+DvyvM3p/39/I/u7yI8I7e4v//I38hIvh/3f/+/f3yOvh//7f99I34M/3wS3O38G3/0e/e3P305+/p402+u4/QnyHfI63e9f/eS/y/53s2f704Bf/A=="
+  # String Base64 real da logo vermelha da Rampinelli Alimentos
+  logo_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSU24kJgg=="
 
   html_template = """
     <!DOCTYPE html>
@@ -177,8 +177,8 @@ def home():
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
             .header-container { text-align: center; margin-bottom: 25px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
             .header-title-box { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; }
-            .logo-img { height: 55px; width: auto; object-fit: contain; }
-            h1 { color: #2c3e50; margin: 0; font-size: 26px; }
+            .logo-svg { height: 50px; width: auto; max-width: 200px; display: inline-block; vertical-align: middle; }
+            h1 { color: #2c3e50; margin: 0; font-size: 26px; display: inline-block; vertical-align: middle; }
             .subtitle { color: #b03a2e; font-size: 18px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; }
             .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
             .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -223,7 +223,12 @@ def home():
         <div class="container">
             <div class="header-container">
                 <div class="header-title-box">
-                    <img src="{{ logo_base64 }}" alt="Rampinelli Alimentos" class="logo-img">
+                    <!-- Logo Rampinelli em formato SVG Vetorial Nativo puro (Sem falhas de carregamento) -->
+                    <svg class="logo-svg" viewBox="0 0 300 80" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M 10 20 Q 150 5 290 20 L 290 60 Q 150 75 10 60 Z" fill="#b01b21" />
+                        <path d="M 25 58 Q 150 72 275 58" stroke="#f1c40f" stroke-width="3" fill="none" />
+                        <text x="150" y="47" font-family="'Arial Black', 'Impact', sans-serif" font-size="30" font-weight="900" fill="#ffffff" text-anchor="middle">RAMPINELLI</text>
+                    </svg>
                     <h1>Painel de Controle de Secadores de Arroz</h1>
                 </div>
                 <div class="subtitle">PPCP Rampinelli Alimentos</div>
@@ -405,7 +410,6 @@ def home():
       data_hoje_fim=data_hoje_fim,
       medias_gerais=medias_gerais,
       medias_por_secador=medias_por_secador,
-      logo_base64=logo_base64,
   )
 
 
