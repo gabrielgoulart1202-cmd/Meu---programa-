@@ -70,7 +70,7 @@ def calcular_medias(secador_num=None):
     return f'{int(avg)}h {int((avg*60)%60)}m'
 
   m_dia = media_horas(
-      [r for r in registros if r['data_fim'].strftime('%Y-%m-%d') == hoje_str]
+      [r for r in registros if r['data_fim'].strftime('%Y-%m-%d'] == hoje_str]
   )
   m_semana = media_horas([
       r
@@ -160,14 +160,12 @@ def home():
           operadores = dados.get('operadores', [])
           proximo_id = dados.get('proximo_id', 1)
 
-          # Reconstrói o histórico convertendo as datas de volta para datetime
           novo_historico = []
           for r in dados.get('historico', []):
             r['data_fim'] = datetime.fromisoformat(r['data_fim_iso'])
             novo_historico.append(r)
           historico = novo_historico
 
-          # Reseta e recalcula os secadores com base no histórico importado
           for i in range(2, 13):
             recalcular_status_secador(i)
         except Exception as e:
@@ -177,7 +175,6 @@ def home():
         url_for('home', filtro_secador=request.args.get('filtro_secador', ''))
     )
 
-  # Rota para Exportar JSON
   if request.args.get('exportar') == '1':
     dados_exportar = {
         'operadores': operadores,
@@ -186,12 +183,11 @@ def home():
             {
                 **r,
                 'data_fim_iso': r['data_fim'].isoformat(),
-                'data_fim': None,  # Remove objeto datetime não serializável
+                'data_fim': None,
             }
             for r in historico
         ],
     }
-    # Limpa o campo datetime temporário do histórico na memória
     for r in historico:
       pass
 
@@ -289,6 +285,23 @@ def home():
                 <div class="subtitle">PPCP Rampinelli Alimentos</div>
             </div>
 
+            <!-- Bloco de Backup JSON posicionado no topo, logo abaixo do cabeçalho -->
+            <div class="card" style="background: #eef2f3;">
+                <h3>💾 Gerenciamento de Dados (Backup JSON)</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
+                    <div>
+                        <a href="/?exportar=1" class="btn-export" style="display: inline-block; padding: 10px 15px; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; text-align: center;">📥 Exportar Dados (JSON)</a>
+                    </div>
+                    <div style="flex-grow: 1; min-width: 280px;">
+                        <form method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; margin: 0;">
+                            <input type="hidden" name="importar_json" value="1">
+                            <input type="file" name="arquivo_json" accept=".json" required style="margin: 0; background: white; padding: 6px;">
+                            <button type="submit" class="btn-import" style="margin: 0; padding: 10px 15px; width: auto;">📤 Importar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <h3>⚡ Média Geral em Tempo Real (Todos os Secadores)</h3>
                 <div class="stats-grid">
@@ -351,22 +364,6 @@ def home():
 
                         <button type="submit" {% if not operadores %}disabled style="background:#ccc"{% endif %}>Lançar Registros</button>
                     </form>
-                </div>
-            </div>
-
-            <div class="card" style="background: #eef2f3;">
-                <h3>💾 Gerenciamento de Dados (Backup JSON)</h3>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
-                    <div>
-                        <a href="/?exportar=1" class="btn-export" style="display: inline-block; padding: 10px 15px; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; text-align: center;">📥 Exportar Dados (JSON)</a>
-                    </div>
-                    <div style="flex-grow: 1; min-width: 280px;">
-                        <form method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; margin: 0;">
-                            <input type="hidden" name="importar_json" value="1">
-                            <input type="file" name="arquivo_json" accept=".json" required style="margin: 0; background: white; padding: 6px;">
-                            <button type="submit" class="btn-import" style="margin: 0; padding: 10px 15px; width: auto;">📤 Importar</button>
-                        </form>
-                    </div>
                 </div>
             </div>
 
@@ -441,48 +438,4 @@ def home():
                                 <tr>
                                     <td><strong>Secador {{ reg.secador }}</strong></td>
                                     <td>{{ reg.operador }}</td>
-                                    <td>{{ reg.inicio_str }}</td>
-                                    <td>{{ reg.fim_str }}</td>
-                                    <td>{{ reg.duracao_str }}</td>
-                                    <td>
-                                        {% if reg.alerta %}
-                                            <span class="badge badge-alerta">⚠️ Alerta (> 3h)</span>
-                                        {% else %}
-                                            <span class="badge badge-eficiente">Eficiente</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja apagar este lançamento?');">
-                                            <input type="hidden" name="apagar_registro" value="1">
-                                            <input type="hidden" name="registro_id" value="{{ reg.id }}">
-                                            <button type="submit" class="btn-danger">🗑️ Apagar</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p style="text-align: center; color: #7f8c8d; margin-top:20px;">Nenhum registro encontrado para este filtro.</p>
-                {% endif %}
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-  return render_template_string(
-      html_template,
-      operadores=operadores,
-      secadores=secadores,
-      historico=historico,
-      historico_exibicao=historico_exibicao,
-      filtro_secador=filtro_secador,
-      data_hoje_inicio=data_hoje_inicio,
-      data_hoje_fim=data_hoje_fim,
-      medias_gerais=medias_gerais,
-      medias_por_secador=medias_por_secador,
-  )
-
-
-if __name__ == '__main__':
-  app.run()
+                                    <td>{{ reg.inicio_str }}
