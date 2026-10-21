@@ -44,6 +44,7 @@ def recalcular_status_secador(num_secador):
 
 
 def calcular_medias(secador_num=None):
+  # Considera o fuso horário de Brasília (UTC-3)
   agora_brasil = datetime.utcnow() - timedelta(hours=3)
   hoje_str = agora_brasil.strftime('%Y-%m-%d')
   semana_atual = agora_brasil.isocalendar()[1]
@@ -61,9 +62,12 @@ def calcular_medias(secador_num=None):
     avg = total / len(filtrados)
     return f'{int(avg)}h {int((avg*60)%60)}m'
 
+  # Filtra comparando a data formatada do término com o dia de hoje no Brasil
   m_dia = media_horas(
       [r for r in registros if r['data_fim'].strftime('%Y-%m-%d') == hoje_str]
   )
+
+  # Filtra pela semana atual e mês atual
   m_semana = media_horas([
       r
       for r in registros
@@ -169,7 +173,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>PPCP Rampinelli - Controle de Secadores</title>
+        <title>Controle de Secadores - PPCP Rampinelli</title>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
             .header-container { text-align: center; margin-bottom: 25px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -221,7 +225,7 @@ def home():
             <div class="header-container">
                 <div class="header-title-box">
                     <img src="https://www.rampinelli.com.br/img/logo-rampinelli.png" alt="Rampinelli Alimentos" class="logo-img">
-                    <h1>Painel de Controle de Secadores de Arroz</h1>
+                    <h1>Controle de Secadores</h1>
                 </div>
                 <div class="subtitle">PPCP Rampinelli Alimentos</div>
             </div>
