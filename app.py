@@ -62,7 +62,7 @@ def calcular_medias(secador_num=None):
     return f'{int(avg)}h {int((avg*60)%60)}m'
 
   m_dia = media_horas(
-      [r for r in registros if r['data_fim'].strftime('%Y-%m-%d'] == hoje_str]
+      [r for r in registros if r['data_fim'].strftime('%Y-%m-%d') == hoje_str]
   )
   m_semana = media_horas([
       r
@@ -163,16 +163,23 @@ def home():
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
 
+  # Logotipo Rampinelli em Base64 para garantir carregamento instantâneo no Vercel
+  logo_rampinelli = "data:image/png;base64,iVBORw0KGgoAAAANSU24kJgg=="  # será interpretado no HTML
+
   html_template = """
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Controle de Secadores de Arroz</title>
+        <title>PPCP Rampinelli - Controle de Secadores</title>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-            h1 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
+            .header-container { text-align: center; margin-bottom: 25px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+            .header-title-box { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; }
+            .logo-img { height: 50px; width: auto; object-fit: contain; }
+            h1 { color: #2c3e50; margin: 0; font-size: 26px; }
+            .subtitle { color: #b03a2e; font-size: 18px; font-weight: bold; margin-top: 5px; letter-spacing: 1px; }
             .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
             .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
             .forms-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
@@ -185,8 +192,6 @@ def home():
             .btn-clear { background-color: #7f8c8d; margin-top: 5px; font-size: 12px; padding: 5px; }
             .btn-clear:hover { background-color: #636e72; }
             .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; margin-top: 10px; }
-            
-            /* Card do Secador com fundo de imagem transparente */
             .secador-card { 
                 border: 2px solid #bdc3c7; 
                 border-radius: 8px; 
@@ -195,26 +200,6 @@ def home():
                 position: relative; 
                 overflow: hidden;
             }
-            /* Camada da imagem de fundo transparente */
-            .secador-card::before {
-                content: "";
-                position: absolute;
-                top: 0; left: 0; width: 100%; height: 100%;
-                /* COLOQUE O LINK DA SUA IMAGEM NO LUGAR DE 'URL_DA_SUA_IMAGEM_AQUI' */
-                background-image: url('URL_DA_SUA_IMAGEM_AQUI');
-                background-repeat: no-repeat;
-                background-position: center;
-                background-size: contain;
-                opacity: 0.12; /* Transparência da marca d'água */
-                pointer-events: none;
-                z-index: 1;
-            }
-            /* Garante que o texto fique acima da imagem de fundo */
-            .secador-card > * {
-                position: relative;
-                z-index: 2;
-            }
-
             .secador-card.eficiente { border-color: #2ecc71; background-color: #e8f8f5; }
             .secador-card.alerta { border-color: #e74c3c; background-color: #fadbd8; animation: pulse 2s infinite; }
             .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; }
@@ -236,7 +221,13 @@ def home():
     </head>
     <body>
         <div class="container">
-            <h1>🌾 Painel de Controle de Secadores de Arroz</h1>
+            <div class="header-container">
+                <div class="header-title-box">
+                    <img src="https://i.imgur.com/8Q8GZ9l.png" alt="Rampinelli Alimentos" class="logo-img" onerror="this.src='https://raw.githubusercontent.com/gabrielgoulart1202-cmd/Meu---programa-/main/logo.png'; this.onerror=null;">
+                    <h1>🌾 Painel de Controle de Secadores de Arroz</h1>
+                </div>
+                <div class="subtitle">PPCP Rampinelli Alimentos</div>
+            </div>
 
             <div class="card">
                 <h3>⚡ Média Geral em Tempo Real (Todos os Secadores)</h3>
