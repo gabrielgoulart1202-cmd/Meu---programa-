@@ -3,9 +3,11 @@ from flask import Flask, redirect, render_template_string, request, url_for
 
 app = Flask(__name__)
 
-# Memória dos dados
+# Dados em memória
 operadores = []
-historico = []  # Lista de registros: {'secador', 'operador', 'inicio', 'fim', 'horas', 'duracao_str', 'alerta', 'data_fim'}
+# Lista de registros: {'id', 'secador', 'operador', 'inicio_str', 'fim_str', 'horas', 'duracao_str', 'alerta', 'data_fim'}
+historico = []
+proximo_id = 1
 
 # Secadores do 2 ao 12
 secadores = {
@@ -49,6 +51,8 @@ def calcular_medias(secador_num=None):
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
+  global proximo_id
+
   if request.method == 'POST':
     # Cadastro de operador
     if 'cadastrar_operador' in request.form:
@@ -72,9 +76,10 @@ def home():
 
         if horas >= 0:
           duracao_formatada = f'{int(horas)}h {int((horas*60)%60)}m'
-          alerta = horas > 3.0  # Alerta se passar de 3h
+          alerta = horas > 3.0
 
           registro = {
+              'id': proximo_id,
               'secador': num_secador,
               'operador': operador,
               'inicio_str': dt_inicio.strftime('%d/%m/%Y %H:%M'),
@@ -84,7 +89,8 @@ def home():
               'alerta': alerta,
               'data_fim': dt_fim,
           }
-          historico.insert(0, registro)  # Adiciona no topo do histórico
+          proximo_id += 1
+          historico.insert(0, registro)
 
           secadores[num_secador] = {
               'operador': operador,
@@ -94,6 +100,12 @@ def home():
               'status': 'Alerta (> 3h)' if alerta else 'Eficiente',
               'alerta': alerta,
           }
+
+    # Apagar um registro do histórico
+    elif 'apagar_registro' in request.form:
+      reg_id = int(request.form.get('registro_id'))
+      global historico
+      historico = [r for r in historico if r['id'] != reg_id]
 
     # Limpar / Resetar secador
     elif 'limpar_secador' in request.form:
@@ -107,13 +119,22 @@ def home():
           'alerta': False,
       }
 
-    return redirect(url_for('home'))
+    return redirect(
+        url_for('home', filtro_secador=request.args.get('filtro_secador', ''))
+    )
+
+  # Filtro do histórico
+  filtro_secador = request.args.get('filtro_secador', '')
+  if filtro_secador.isdigit():
+    secador_filtro_num = int(filtro_secador)
+    historico_exibicao = [
+        r for r in historico if r['secador'] == secador_filtro_num
+    ]
+  else:
+    historico_exibicao = historico
 
   medias_gerais = calcular_medias()
-
-  medias_por_secador = {}
-  for i in range(2, 13):
-    medias_por_secador[i] = calcular_medias(i)
+  medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
 
   html_template = '''
     <!DOCTYPE html>
@@ -132,6 +153,8 @@ def home():
             input, select, button { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
             button { background-color: #27ae60; color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; }
             button:hover { background-color: #219150; }
+            .btn-danger { background-color: #e74c3c; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+            .btn-danger:hover { background-color: #c0392b; }
             .btn-clear { background-color: #7f8c8d; margin-top: 5px; font-size: 12px; padding: 5px; }
             .btn-clear:hover { background-color: #636e72; }
             .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; margin-top: 10px; }
@@ -150,6 +173,8 @@ def home():
             th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
             th { background-color: #34495e; color: white; }
             tr:nth-child(even) { background-color: #f9f9f9; }
+            .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+            .filter-bar select { width: auto; margin-top: 0; }
             @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
         </style>
     </head>
@@ -157,9 +182,9 @@ def home():
         <div class="container">
             <h1>🌾 Painel de Controle de Secadores de Arroz</h1>
 
-            <!-- Média Geral de Secagem -->
+            <!-- Média Geral em Tempo Real -->
             <div class="card">
-                <h3>📊 Média Geral do Processo (Todos os Secadores)</h3>
+                <h3>⚡ Média Geral em Tempo Real (Todos os Secadores)</h3>
                 <div class="stats-grid">
                     <div class="stat-box">
                         <h4>Média do Dia</h4>
@@ -247,8 +272,8 @@ def home():
                             <p><strong>Duração Última:</strong> {{ dados.duracao }}</p>
                             
                             <hr style="border: 0; border-top: 1px solid #ddd; margin: 10px 0;">
-                            <p style="font-size: 12px; margin: 2px 0;"><strong>Médias:</strong></p>
-                            <p style="font-size: 11px; margin: 2px 0;">• Dia: {{ medias_por_secador[num].dia }}</p>
+                            <p style="font-size: 12px; margin: 2px 0;"><strong>Médias em Tempo Real:</strong></p>
+                            <p style="font-size: 11px; margin: 2px 0;">• Dia: <strong>{{ medias_por_secador[num].dia }}</strong></p>
                             <p style="font-size: 11px; margin: 2px 0;">• Semana: {{ medias_por_secador[num].semana }}</p>
                             <p style="font-size: 11px; margin: 2px 0;">• Mês: {{ medias_por_secador[num].mes }}</p>
 
@@ -264,10 +289,23 @@ def home():
                 </div>
             </div>
 
-            <!-- Tabela de Histórico de Secagens -->
+            <!-- Tabela de Histórico e Filtro por Secador -->
             <div class="card">
                 <h3>📜 Histórico de Secagens</h3>
-                {% if historico %}
+                
+                <div class="filter-bar">
+                    <label style="margin-top:0;">Filtrar por Secador:</label>
+                    <form method="GET" style="display:inline-block;">
+                        <select name="filtro_secador" onchange="this.form.submit()">
+                            <option value="">Todos os Secadores</option>
+                            {% for i in range(2, 13) %}
+                                <option value="{{ i }}" {% if filtro_secador == i|string %}selected{% endif %}>Secador {{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+
+                {% if historico_exibicao %}
                     <table>
                         <thead>
                             <tr>
@@ -277,10 +315,11 @@ def home():
                                 <th>Fim</th>
                                 <th>Duração</th>
                                 <th>Status</th>
+                                <th>Ação</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for reg in historico %}
+                            {% for reg in historico_exibicao %}
                                 <tr>
                                     <td><strong>Secador {{ reg.secador }}</strong></td>
                                     <td>{{ reg.operador }}</td>
@@ -294,12 +333,19 @@ def home():
                                             <span class="badge badge-eficiente">Eficiente</span>
                                         {% endif %}
                                     </td>
+                                    <td>
+                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja apagar este lançamento?');">
+                                            <input type="hidden" name="apagar_registro" value="1">
+                                            <input type="hidden" name="registro_id" value="{{ reg.id }}">
+                                            <button type="submit" class="btn-danger">🗑️ Apagar</button>
+                                        </form>
+                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 {% else %}
-                    <p style="text-align: center; color: #7f8c8d;">Nenhum registro de secagem efetuado ainda.</p>
+                    <p style="text-align: center; color: #7f8c8d; margin-top:20px;">Nenhum registro encontrado para este filtro.</p>
                 {% endif %}
             </div>
         </div>
@@ -311,6 +357,8 @@ def home():
       operadores=operadores,
       secadores=secadores,
       historico=historico,
+      historico_exibicao=historico_exibicao,
+      filtro_secador=filtro_secador,
       medias_gerais=medias_gerais,
       medias_por_secador=medias_por_secador,
   )
