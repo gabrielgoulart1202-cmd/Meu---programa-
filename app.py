@@ -21,10 +21,9 @@ secadores = {
 
 
 def recalcular_status_secador(num_secador):
-  """Recalcula o status do card do secador com base no registro mais recente do histórico."""
   registros = [r for r in historico if r['secador'] == num_secador]
   if registros:
-    ultimo = registros[0]  # O histórico é ordenado do mais recente para o mais antigo
+    ultimo = registros[0]
     secadores[num_secador] = {
         'operador': ultimo['operador'],
         'inicio': ultimo['inicio_fmt_card'],
@@ -45,10 +44,11 @@ def recalcular_status_secador(num_secador):
 
 
 def calcular_medias(secador_num=None):
-  agora = datetime.now()
-  hoje_inicio = agora.replace(hour=0, minute=0, second=0, microsecond=0)
-  semana_inicio = hoje_inicio - timedelta(days=agora.weekday())
-  mes_inicio = hoje_inicio.replace(day=1)
+  # Comparamos apenas a data (Ano, Mês, Dia) para garantir que entra sempre no dia correto
+  hoje_str = datetime.now().strftime('%Y-%m-%d')
+  semana_atual = datetime.now().isocalendar()[1]
+  mes_atual = datetime.now().month
+  ano_atual = datetime.now().year
 
   registros = historico
   if secador_num:
@@ -61,11 +61,25 @@ def calcular_medias(secador_num=None):
     avg = total / len(filtrados)
     return f'{int(avg)}h {int((avg*60)%60)}m'
 
-  m_dia = media_horas([r for r in registros if r['data_fim'] >= hoje_inicio])
-  m_semana = media_horas(
-      [r for r in registros if r['data_fim'] >= semana_inicio]
+  # Filtro do dia (compara a string YYYY-MM-DD da data fim)
+  m_dia = media_horas(
+      [r for r in registros if r['data_fim'].strftime('%Y-%m-%d') == hoje_str]
   )
-  m_mes = media_horas([r for r in registros if r['data_fim'] >= mes_inicio])
+
+  # Filtro da semana
+  m_semana = media_horas([
+      r
+      for r in registros
+      if r['data_fim'].isocalendar()[1] == semana_atual
+      and r['data_fim'].year == ano_atual
+  ])
+
+  # Filtro do mês
+  m_mes = media_horas([
+      r
+      for r in registros
+      if r['data_fim'].month == mes_atual and r['data_fim'].year == ano_atual
+  ])
 
   return {'dia': m_dia, 'semana': m_semana, 'mes': m_mes}
 
@@ -116,7 +130,6 @@ def home():
 
     elif 'apagar_registro' in request.form:
       reg_id = int(request.form.get('registro_id'))
-      # Encontra qual secador pertencia o registro antes de apagar
       secador_afetado = next(
           (r['secador'] for r in historico if r['id'] == reg_id), None
       )
@@ -148,7 +161,6 @@ def home():
   else:
     historico_exibicao = historico
 
-  # Data/Hora padrão com a data e horário de hoje (editável)
   agora_now = datetime.now()
   data_hoje_inicio = agora_now.strftime('%Y-%m-%dT%H:%M')
   data_hoje_fim = (agora_now + timedelta(hours=3)).strftime('%Y-%m-%dT%H:%M')
@@ -256,10 +268,10 @@ def home():
                             {% endfor %}
                         </select>
 
-                        <label>Data/Hora Início (Hoje - editável):</label>
+                        <label>Data/Hora Início:</label>
                         <input type="datetime-local" name="inicio" value="{{ data_hoje_inicio }}" required>
 
-                        <label>Data/Hora Término (Hoje - editável):</label>
+                        <label>Data/Hora Término:</label>
                         <input type="datetime-local" name="fim" value="{{ data_hoje_fim }}" required>
 
                         <button type="submit" {% if not operadores %}disabled style="background:#ccc"{% endif %}>Lançar Registros</button>
