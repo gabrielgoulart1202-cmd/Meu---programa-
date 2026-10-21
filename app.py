@@ -247,6 +247,8 @@ def home():
             .btn-export:hover { background-color: #2471a3; }
             .btn-import { background-color: #8e44ad; }
             .btn-import:hover { background-color: #7d3c98; }
+            .btn-pdf { background-color: #c0392b; color: white; font-weight: bold; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+            .btn-pdf:hover { background-color: #a93226; }
             .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; margin-top: 10px; }
             .secador-card { 
                 border: 2px solid #bdc3c7; 
@@ -273,6 +275,14 @@ def home():
             .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
             .filter-bar select { width: auto; margin-top: 0; }
             @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+
+            /* Estilo exclusivo para a Impressão/Geração do PDF */
+            @media print {
+                body * { visibility: hidden; }
+                #secao-pdf, #secao-pdf * { visibility: visible; }
+                #secao-pdf { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; padding: 0; }
+                .btn-clear, .btn-pdf { display: none !important; }
+            }
         </style>
     </head>
     <body>
@@ -285,7 +295,6 @@ def home():
                 <div class="subtitle">PPCP Rampinelli Alimentos</div>
             </div>
 
-            <!-- Bloco de Backup JSON posicionado no topo, logo abaixo do cabeçalho -->
             <div class="card" style="background: #eef2f3;">
                 <h3>💾 Gerenciamento de Dados (Backup JSON)</h3>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
@@ -367,8 +376,12 @@ def home():
                 </div>
             </div>
 
-            <div class="card">
-                <h3>🏭 Status e Médias Individuais (Secadores 2 a 12)</h3>
+            <!-- Seção de Status e Médias Individuais com ID para exportação em PDF -->
+            <div class="card" id="secao-pdf">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">🏭 Status e Médias Individuais (Secadores 2 a 12)</h3>
+                    <button type="button" class="btn-pdf" onclick="window.print()">📄 Gerar PDF do Status</button>
+                </div>
                 <div class="secadores-grid">
                     {% for num, dados in secadores.items() %}
                         <div class="secador-card {% if dados.alerta %}alerta{% elif dados.status == 'Eficiente' %}eficiente{% endif %}">
@@ -455,7 +468,7 @@ def home():
                                             <button type="submit" class="btn-danger">🗑️ Apagar</button>
                                         </form>
                                     </td>
-                                </tr>
+                                -</tr>
                             {% endfor %}
                         </tbody>
                     </table>
