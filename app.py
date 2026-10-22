@@ -85,7 +85,6 @@ def home():
   global proximo_id, historico, operadores, secadores
 
   if request.method == 'POST':
-    # Sincroniza dados enviados via localStorage do navegador a cada ação
     dados_locais = request.form.get('dados_locais')
     if dados_locais:
       try:
@@ -164,7 +163,6 @@ def home():
           'alerta': False,
       }
 
-    # Salva o estado atual no navegador do usuário imediatamente após a ação via JavaScript/HTML abaixo
     return render_template_string(
         """
         <!DOCTYPE html>
@@ -202,7 +200,6 @@ def home():
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
 
-  # Prepara o histórico para serialização JSON no navegador
   historico_json = []
   for r in historico:
     r_copia = r.copy()
@@ -272,7 +269,6 @@ def home():
             }
         </style>
         <script>
-            // Salva automaticamente o estado atual no navegador
             function salvarLocalmente() {
                 const dados = {
                     operadores: {{ operadores|tojson }},
@@ -282,7 +278,6 @@ def home():
                 localStorage.setItem('secadores_data', JSON.stringify(dados));
             }
 
-            // Ao carregar a página, verifica se há dados salvos localmente. Se houver e o servidor estiver vazio, sincroniza!
             window.addEventListener('DOMContentLoaded', (event) => {
                 salvarLocalmente();
                 const salvo = localStorage.getItem('secadores_data');
@@ -432,7 +427,7 @@ def home():
                     <form method="GET" style="display:inline-block;">
                         <select name="filtro_secador" onchange="this.form.submit()">
                             <option value="">Todos os Secadores</option>
-                            {% for i in range(2, 13) %>
+                            {% for i in range(2, 13) %}
                                 <option value="{{ i }}" {% if filtro_secador == i|string %}selected{% endif %}>Secador {{ i }}</option>
                             {% endfor %}
                         </select>
