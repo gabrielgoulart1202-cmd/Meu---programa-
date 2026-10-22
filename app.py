@@ -1,13 +1,6 @@
 from datetime import datetime, timedelta
 import json
-from flask import (
-    Flask,
-    Response,
-    redirect,
-    render_template_string,
-    request,
-    url_for,
-)
+from flask import Flask, redirect, render_template_string, request, url_for
 
 app = Flask(__name__)
 
@@ -92,6 +85,26 @@ def home():
   global proximo_id, historico, operadores, secadores
 
   if request.method == 'POST':
+    # Sincroniza dados enviados via localStorage do navegador a cada ação
+    dados_locais = request.form.get('dados_locais')
+    if dados_locais:
+      try:
+        carregado = json.loads(dados_locais)
+        if carregado.get('operadores'):
+          operadores = carregado['operadores']
+        if carregado.get('proximo_id'):
+          proximo_id = carregado['proximo_id']
+        if carregado.get('historico'):
+          novo_hist = []
+          for r in carregado['historico']:
+            r['data_fim'] = datetime.fromisoformat(r['data_fim_iso'])
+            novo_hist.append(r)
+          historico = novo_hist
+          for i in range(2, 13):
+            recalcular_status_secador(i)
+      except Exception as e:
+        print(f'Erro ao carregar do localStorage: {e}')
+
     if 'cadastrar_operador' in request.form:
       nome = request.form.get('nome_operador', '').strip()
       if nome and nome not in operadores:
@@ -151,55 +164,26 @@ def home():
           'alerta': False,
       }
 
-    elif 'importar_json' in request.form:
-      arquivo = request.files.get('arquivo_json')
-      if arquivo:
-        try:
-          conteudo = arquivo.read().decode('utf-8')
-          dados = json.loads(conteudo)
-          operadores = dados.get('operadores', [])
-          proximo_id = dados.get('proximo_id', 1)
-
-          novo_historico = []
-          for r in dados.get('historico', []):
-            r['data_fim'] = datetime.fromisoformat(r['data_fim_iso'])
-            novo_historico.append(r)
-          historico = novo_historico
-
-          for i in range(2, 13):
-            recalcular_status_secador(i)
-        except Exception as e:
-          print(f'Erro ao importar JSON: {e}')
-
-    return redirect(
-        url_for('home', filtro_secador=request.args.get('filtro_secador', ''))
-    )
-
-  if request.args.get('exportar') == '1':
-    dados_exportar = {
-        'operadores': operadores,
-        'proximo_id': proximo_id,
-        'historico': [
-            {
-                **r,
-                'data_fim_iso': r['data_fim'].isoformat(),
-                'data_fim': None,
-            }
-            for r in historico
-        ],
-    }
-    for r in historico:
-      pass
-
-    resposta_json = json.dumps(dados_exportar, ensure_ascii=False, indent=4)
-    return Response(
-        resposta_json,
-        mimetype='application/json',
-        headers={
-            'Content-Disposition': (
-                'attachment;filename=controle_secadores_backup.json'
-            )
-        },
+    # Salva o estado atual no navegador do usuário imediatamente após a ação via JavaScript/HTML abaixo
+    return render_template_string(
+        """
+        <!DOCTYPE html>
+        <html lang="pt-br">
+        <head><meta charset="UTF-8"><title>Salvando...</title></head>
+        <body>
+            <form id="autoForm" action="/" method="POST">
+                <input type="hidden" name="dados_locais" id="dados_locais">
+            </form>
+            <script>
+                const dados = localStorage.getItem('secadores_data');
+                if (dados) {
+                    document.getElementById('dados_locais').value = dados;
+                }
+                document.getElementById('autoForm').submit();
+            </script>
+        </body>
+        </html>
+    """
     )
 
   filtro_secador = request.args.get('filtro_secador', '')
@@ -217,6 +201,14 @@ def home():
 
   medias_gerais = calcular_medias()
   medias_por_secador = {i: calcular_medias(i) for i in range(2, 13)}
+
+  # Prepara o histórico para serialização JSON no navegador
+  historico_json = []
+  for r in historico:
+    r_copia = r.copy()
+    r_copia['data_fim_iso'] = r['data_fim'].isoformat()
+    del r_copia['data_fim']
+    historico_json.append(r_copia)
 
   html_template = """
     <!DOCTYPE html>
@@ -243,10 +235,6 @@ def home():
             .btn-danger:hover { background-color: #c0392b; }
             .btn-clear { background-color: #7f8c8d; margin-top: 5px; font-size: 12px; padding: 5px; }
             .btn-clear:hover { background-color: #636e72; }
-            .btn-export { background-color: #2980b9; }
-            .btn-export:hover { background-color: #2471a3; }
-            .btn-import { background-color: #8e44ad; }
-            .btn-import:hover { background-color: #7d3c98; }
             .btn-pdf { background-color: #c0392b; color: white; font-weight: bold; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
             .btn-pdf:hover { background-color: #a93226; }
             .secadores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 15px; margin-top: 10px; }
@@ -276,7 +264,6 @@ def home():
             .filter-bar select { width: auto; margin-top: 0; }
             @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 
-            /* Estilo exclusivo para a Impressão/Geração do PDF */
             @media print {
                 body * { visibility: hidden; }
                 #secao-pdf, #secao-pdf * { visibility: visible; }
@@ -284,6 +271,42 @@ def home():
                 .btn-clear, .btn-pdf { display: none !important; }
             }
         </style>
+        <script>
+            // Salva automaticamente o estado atual no navegador
+            function salvarLocalmente() {
+                const dados = {
+                    operadores: {{ operadores|tojson }},
+                    proximo_id: {{ proximo_id }},
+                    historico: {{ historico_json|tojson }}
+                };
+                localStorage.setItem('secadores_data', JSON.stringify(dados));
+            }
+
+            // Ao carregar a página, verifica se há dados salvos localmente. Se houver e o servidor estiver vazio, sincroniza!
+            window.addEventListener('DOMContentLoaded', (event) => {
+                salvarLocalmente();
+                const salvo = localStorage.getItem('secadores_data');
+                const historicoServidorVazio = {{ 'true' if not historico else 'false' }};
+                
+                if (salvo && historicoServidorVazio) {
+                    const dadosObj = JSON.parse(salvo);
+                    if (dadosObj.historico && dadosObj.historico.length > 0) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/';
+                        
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'dados_locais';
+                        input.value = salvo;
+                        
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                }
+            });
+        </script>
     </head>
     <body>
         <div class="container">
@@ -293,22 +316,6 @@ def home():
                     <h1>Controle de Secadores</h1>
                 </div>
                 <div class="subtitle">PPCP Rampinelli Alimentos</div>
-            </div>
-
-            <div class="card" style="background: #eef2f3;">
-                <h3>💾 Gerenciamento de Dados (Backup JSON)</h3>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
-                    <div>
-                        <a href="/?exportar=1" class="btn-export" style="display: inline-block; padding: 10px 15px; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; text-align: center;">📥 Exportar Dados (JSON)</a>
-                    </div>
-                    <div style="flex-grow: 1; min-width: 280px;">
-                        <form method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; margin: 0;">
-                            <input type="hidden" name="importar_json" value="1">
-                            <input type="file" name="arquivo_json" accept=".json" required style="margin: 0; background: white; padding: 6px;">
-                            <button type="submit" class="btn-import" style="margin: 0; padding: 10px 15px; width: auto;">📤 Importar</button>
-                        </form>
-                    </div>
-                </div>
             </div>
 
             <div class="card">
@@ -332,7 +339,7 @@ def home():
             <div class="forms-grid">
                 <div class="card">
                     <h3>👤 Cadastrar Operador</h3>
-                    <form method="POST">
+                    <form method="POST" onsubmit="salvarLocalmente()">
                         <input type="hidden" name="cadastrar_operador" value="1">
                         <label>Nome do Operador:</label>
                         <input type="text" name="nome_operador" placeholder="Ex: João Silva" required>
@@ -345,7 +352,7 @@ def home():
 
                 <div class="card">
                     <h3>⏱️ Registrar Secagem</h3>
-                    <form method="POST">
+                    <form method="POST" onsubmit="salvarLocalmente()">
                         <input type="hidden" name="registrar_secagem" value="1">
                         
                         <label>Secador (2 ao 12):</label>
@@ -376,7 +383,6 @@ def home():
                 </div>
             </div>
 
-            <!-- Seção de Status e Médias Individuais com ID para exportação em PDF -->
             <div class="card" id="secao-pdf">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
                     <h3 style="margin: 0;">🏭 Status e Médias Individuais (Secadores 2 a 12)</h3>
@@ -407,7 +413,7 @@ def home():
                             <p style="font-size: 11px; margin: 2px 0;">• Mês: {{ medias_por_secador[num].mes }}</p>
 
                             {% if dados.status != 'Livre' %}
-                                <form method="POST">
+                                <form method="POST" onsubmit="salvarLocalmente()">
                                     <input type="hidden" name="limpar_secador" value="1">
                                     <input type="hidden" name="secador_id" value="{{ num }}">
                                     <button type="submit" class="btn-clear">Liberar / Resetar</button>
@@ -426,7 +432,7 @@ def home():
                     <form method="GET" style="display:inline-block;">
                         <select name="filtro_secador" onchange="this.form.submit()">
                             <option value="">Todos os Secadores</option>
-                            {% for i in range(2, 13) %}
+                            {% for i in range(2, 13) %>
                                 <option value="{{ i }}" {% if filtro_secador == i|string %}selected{% endif %}>Secador {{ i }}</option>
                             {% endfor %}
                         </select>
@@ -462,13 +468,13 @@ def home():
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja apagar este lançamento?');">
+                                        <form method="POST" style="display:inline;" onsubmit="salvarLocalmente(); return confirm('Tem certeza que deseja apagar este lançamento?');">
                                             <input type="hidden" name="apagar_registro" value="1">
                                             <input type="hidden" name="registro_id" value="{{ reg.id }}">
                                             <button type="submit" class="btn-danger">🗑️ Apagar</button>
                                         </form>
                                     </td>
-                                -</tr>
+                                </tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -491,6 +497,8 @@ def home():
       data_hoje_fim=data_hoje_fim,
       medias_gerais=medias_gerais,
       medias_por_secador=medias_por_secador,
+      historico_json=historico_json,
+      proximo_id=proximo_id,
   )
 
 
